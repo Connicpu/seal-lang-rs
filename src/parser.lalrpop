@@ -1,0 +1,92 @@
+use ast;
+use std::str::FromStr;
+
+grammar;
+
+pub Module: ast::Module = {
+    <Item*> => ast::Module {
+        items: <>,
+    }
+};
+
+Item: ast::Item = {
+    "fn" <Function> => ast::Item::Function(<>),
+};
+
+Params = Comma<Identifier>;
+ErrFlag: bool = {
+    ")?" => true,
+    ")" => false,
+};
+Function: ast::Function = {
+    <name:Identifier> "(" <params:Params> <err_flag:ErrFlag> <body:Block> => ast::Function {
+        name: name.into(),
+        parameters: params,
+        can_error: err_flag,
+        body: body,
+    }
+};
+
+Block: ast::Block = {
+    "{" <Statement*> "}" => ast::Block {
+        statements: <>,
+    }
+};
+
+Statement: ast::Statement = {
+    "let" <Identifier> <("=" <Expression>)?> => ast::Statement::Declaration(<>),
+    "if" <IfBlockChain> => ast::Statement::IfElse(<>),
+    <Identifier> "=" <Expression> => ast::Statement::Assignment(<>),
+    <Expression> => ast::Statement::Expression(<>),
+};
+
+IfBlockChain: ast::IfElse = {
+    <cond:Expression> <if_block:Block> => ast::IfElse {
+        condition: Box::new(cond),
+        if_block: Box::new(if_block),
+        else_block: None,
+    },
+    <cond:Expression> <if_block:Block> "else" <else_block:Block> => ast::IfElse {
+        condition: Box::new(cond),
+        if_block: Box::new(if_block),
+        else_block: Some(Box::new(else_block)),
+    },
+    <cond:Expression> <if_block:Block> "else if" <chain:IfBlockChain> => ast::IfElse {
+        condition: Box::new(cond),
+        if_block: Box::new(if_block),
+        else_block: Some(Box::new(ast::Block {
+            statements: vec![ast::Statement::IfElse(chain)],
+        })),
+    }
+};
+
+Expression: ast::Expression = {
+    <Literal> => ast::Expression::Literal(<>),
+    <Identifier> => ast::Expression::Identifier(<>),
+    <obj:Expression> "." <member:Identifier> => {
+        ast::Expression::MemberAccess(Box::new(obj), member)
+    },
+    <func:Expression> "(" <params:Comma<Expression>> ")" => {
+        ast::Expression::FunctionCall(Box::new(func), params)
+    },
+};
+
+Literal: ast::Literal = {
+    r"[0-9]+" => ast::Literal::Integer(i64::from_str(<>).unwrap()),
+    // TODO: Parse string literal into actual string data
+    r#""(\.|[^"])*""# => ast::Literal::String(<>.into()),
+};
+
+Identifier: String = r"[a-zA-Z_][a-zA-Z0-9_]*" => (<>).into();
+Label: String = ":" <Identifier>;
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};

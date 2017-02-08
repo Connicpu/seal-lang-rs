@@ -1,0 +1,11 @@
+[package]
+authors = ["Connor Hilarides <connorcpu@live.com>"]
+build = "build.rs"
+name = "seal-lang"
+version = "0.1.0"
+
+[dependencies]
+lalrpop-util = "0.12.4"
+
+[build-dependencies.lalrpop]
+version = "0.12.4"
