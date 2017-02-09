@@ -19,7 +19,7 @@ mod foo {
 fn main() {
     let result;
     
-    let me = foo("me").expect("I exist");
+    let me = foo.create("me").expect("I exist");
     result = a.fly();
     
     if result.err != nil {
