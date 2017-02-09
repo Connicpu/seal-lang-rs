@@ -2,17 +2,21 @@ mod foo {
     type Person;
 
     impl Person {
-        fn fly()? {
-
+        fn create(name)? {
+            return new Person {
+                name,
+                has_flown: false,
+                can_fly: rand.bernoulli(0.5),
+            };
         }
-    }
 
-    fn create(name)? {
-        return new Person {
-            name,
-            has_flown: false,
-            can_fly: rand.bernoulli(0.5),
-        };
+        fn fly(self)? {
+            if self.can_fly {
+                self.has_flown = true;
+            } else {
+                throw "You aren't allowed to fly!";
+            }
+        }
     }
 }
 
@@ -31,4 +35,5 @@ fn main() {
     }
 
     let stuff = [1, 2, 3];
+    let things = -a.foo() + 6;
 }

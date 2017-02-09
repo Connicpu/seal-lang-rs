@@ -39,6 +39,7 @@ pub enum Statement {
     Assignment(Expression, AssignOp, Expression),
     IfElse(IfElse),
     Return(Expression),
+    Throw(Expression),
 }
 
 #[derive(Debug)]
@@ -59,6 +60,7 @@ pub enum Expression {
     BinaryOp(Box<Expression>, BinOp, Box<Expression>),
     Negate(Box<Expression>),
     Not(Box<Expression>),
+    Try(Box<Expression>),
 }
 
 // listed from lowest to highest precedence
