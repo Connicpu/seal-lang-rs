@@ -20,7 +20,7 @@ fn main() {
     let err;
     
     let me = foo("me").expect("I exist");
-    err = a.fly();
+    _, err = a.fly();
     
     if err != nil {
         print("I'm sad");
