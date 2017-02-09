@@ -1,0 +1,34 @@
+mod foo {
+    type Person;
+
+    impl Person {
+        fn fly()? {
+
+        }
+    }
+
+    fn create(name)? {
+        return new Person {
+            name,
+            has_flown: false,
+            can_fly: rand.bernoulli(0.5),
+        };
+    }
+}
+
+fn main() {
+    let err;
+    
+    let me = foo("me").expect("I exist");
+    err = a.fly();
+    
+    if err != nil {
+        print("I'm sad");
+    } else if dont_care_about_flying() {
+        print("meh");
+    } else {
+        print("I can fly!");
+    }
+
+    let stuff = [1, 2, 3];
+}

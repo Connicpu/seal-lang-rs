@@ -4,13 +4,28 @@ use std::str::FromStr;
 grammar;
 
 pub Module: ast::Module = {
-    <Item*> => ast::Module {
+    <ModuleBlock> => ast::Module::Root {
         items: <>,
     }
 };
 
+ModuleBlock = <Item*>;
+
 Item: ast::Item = {
     "fn" <Function> => ast::Item::Function(<>),
+    "mod" <Identifier> => ast::Item::Module(ast::Module::Extern { name: <> }),
+    "mod" <name:Identifier> "{" <items:ModuleBlock> "}" => ast::Item::Module(ast::Module::Inline {
+        name: name,
+        items: items,
+    }),
+    "type" <Identifier> ";" => ast::Item::TypeDecl(<>),
+    "impl" <name:Identifier> "{" <funcs:("fn" <Function>)*> "}" => {
+        let mut funcs = funcs;
+        for func in funcs.iter_mut() {
+            func.is_member = true;
+        }
+        ast::Item::TypeImpl(name, funcs)
+    }
 };
 
 Params = Comma<Identifier>;
@@ -23,6 +38,7 @@ Function: ast::Function = {
         name: name.into(),
         parameters: params,
         can_error: err_flag,
+        is_member: false,
         body: body,
     }
 };
@@ -34,10 +50,26 @@ Block: ast::Block = {
 };
 
 Statement: ast::Statement = {
-    "let" <Identifier> <("=" <Expression>)?> => ast::Statement::Declaration(<>),
+    "let" <Identifier> <("=" <Expression>)?> ";" => ast::Statement::Declaration(<>),
+    "return" <Expression> ";" => ast::Statement::Return(<>),
     "if" <IfBlockChain> => ast::Statement::IfElse(<>),
-    <Identifier> "=" <Expression> => ast::Statement::Assignment(<>),
-    <Expression> => ast::Statement::Expression(<>),
+    <Expression> <AssignOps> <Expression> ";" => ast::Statement::Assignment(<>),
+    <Expression> ";" => ast::Statement::Expression(<>),
+};
+
+AssignOps: ast::AssignOp = {
+    "=" => ast::AssignOp::Assign,
+    "|=" => ast::AssignOp::BitOr,
+    "&=" => ast::AssignOp::BitAnd,
+    "^=" => ast::AssignOp::BitXor,
+    "<<=" => ast::AssignOp::LShiftLeft,
+    ">>=" => ast::AssignOp::AShiftRight,
+    ">>>=" => ast::AssignOp::LShiftRight,
+    "+=" => ast::AssignOp::Add,
+    "-=" => ast::AssignOp::Sub,
+    "*=" => ast::AssignOp::Mul,
+    "/=" => ast::AssignOp::Div,
+    "%=" => ast::AssignOp::Rem,
 };
 
 IfBlockChain: ast::IfElse = {
@@ -61,20 +93,97 @@ IfBlockChain: ast::IfElse = {
 };
 
 Expression: ast::Expression = {
-    <Literal> => ast::Expression::Literal(<>),
-    <Identifier> => ast::Expression::Identifier(<>),
     <obj:Expression> "." <member:Identifier> => {
         ast::Expression::MemberAccess(Box::new(obj), member)
     },
     <func:Expression> "(" <params:Comma<Expression>> ")" => {
         ast::Expression::FunctionCall(Box::new(func), params)
     },
+    "new" <Identifier> <ObjectLiteral> => ast::Expression::ObjectConstructor(<>),
+
+    RangeOperators,
+};
+
+RangeOperators = Tier<RangeOps, LogicalOperators>;
+LogicalOperators = Tier<LogicalOr, Tier<LogicalAnd, EqualityOperators>>;
+EqualityOperators = Tier<EqualOps, BitwiseOperators>;
+BitwiseOperators = Tier<BitOps, ShiftOperators>;
+ShiftOperators = Tier<ShiftOps, AddSubOperators>;
+AddSubOperators = Tier<AddSubOps, MulDivOperators>;
+MulDivOperators = Tier<MulDivOps, Term>;
+
+RangeOps: ast::BinOp = {
+    ".." => ast::BinOp::RangeExclusive,
+    "..." => ast::BinOp::RangeInclusive,
+};
+
+LogicalOr: ast::BinOp = {
+    "||" => ast::BinOp::LogicalOr
+};
+
+LogicalAnd: ast::BinOp = {
+    "&&" => ast::BinOp::LogicalAnd
+};
+
+EqualOps: ast::BinOp = {
+    "==" => ast::BinOp::Equal,
+    "!=" => ast::BinOp::NotEqual,
+    "<" => ast::BinOp::LessThan,
+    ">" => ast::BinOp::GreaterThan,
+    "<=" => ast::BinOp::LessOrEqual,
+    ">=" => ast::BinOp::GreaterOrEqual,
+};
+
+BitOps: ast::BinOp = {
+    "&" => ast::BinOp::BitAnd,
+    "|" => ast::BinOp::BitOr,
+    "^" => ast::BinOp::BitXor,
+};
+
+ShiftOps: ast::BinOp = {
+    "<<" => ast::BinOp::LShiftLeft,
+    ">>" => ast::BinOp::AShiftRight,
+    ">>>" => ast::BinOp::LShiftRight,
+};
+
+AddSubOps: ast::BinOp = {
+    "+" => ast::BinOp::Add,
+    "-" => ast::BinOp::Sub,
+};
+
+MulDivOps: ast::BinOp = {
+    "*" => ast::BinOp::Mul,
+    "/" => ast::BinOp::Div,
+    "%" => ast::BinOp::Rem,
+};
+
+Term: ast::Expression = {
+    <Literal> => ast::Expression::Literal(<>),
+    <Identifier> => ast::Expression::Identifier(<>),
+    "-" <Term> => ast::Expression::Negate(Box::new(<>)),
+    "!" <Term> => ast::Expression::Not(Box::new(<>)),
+    "(" <Expression> ")",
+    "nil" => ast::Expression::Nil,
 };
 
 Literal: ast::Literal = {
     r"[0-9]+" => ast::Literal::Integer(i64::from_str(<>).unwrap()),
+    r"[0-9]+\.[0-9]+(e[+-]?[0-9]+)?" => ast::Literal::Float(f64::from_str(<>).unwrap()),
     // TODO: Parse string literal into actual string data
-    r#""(\.|[^"])*""# => ast::Literal::String(<>.into()),
+    r#""(\\.|[^"])*""# => ast::Literal::String(<>.into()),
+    <ObjectLiteral> => ast::Literal::Object(<>),
+    <ArrayLiteral> => ast::Literal::Array(<>),
+};
+
+ObjectLiteral: ast::ObjectLiteral = {
+    "{" <Comma<BlockItem>> "}" => (<>).into_iter().collect()
+};
+
+ArrayLiteral = "[" <Comma<Expression>> "]";
+
+BlockItem: (ast::Identifier, ast::Expression) = {
+    <Identifier> ":" <Expression> => (<>),
+    <Identifier> => (<>.clone(), ast::Expression::Identifier(<>.clone())),
 };
 
 Identifier: String = r"[a-zA-Z_][a-zA-Z0-9_]*" => (<>).into();
@@ -89,4 +198,11 @@ Comma<T>: Vec<T> = {
             v
         }
     }
+};
+
+Tier<Op, NextTier>: ast::Expression = {
+    <l:Tier<Op, NextTier>> <o:Op> <r:NextTier> => {
+        ast::Expression::BinaryOp(Box::new(l), o, Box::new(r))
+    },
+    NextTier
 };

@@ -4,13 +4,18 @@ pub type Identifier = String;
 pub type Label = String;
 
 #[derive(Debug)]
-pub struct Module {
-    pub items: Vec<Item>,
+pub enum Module {
+    Root { items: Vec<Item> },
+    Inline { name: Identifier, items: Vec<Item> },
+    Extern { name: Identifier },
 }
 
 #[derive(Debug)]
 pub enum Item {
     Function(Function),
+    Module(Module),
+    TypeDecl(Identifier),
+    TypeImpl(Identifier, Vec<Function>),
 }
 
 #[derive(Debug)]
@@ -18,6 +23,7 @@ pub struct Function {
     pub name: Identifier,
     pub parameters: Vec<Identifier>,
     pub can_error: bool,
+    pub is_member: bool,
     pub body: Block,
 }
 
@@ -30,8 +36,9 @@ pub struct Block {
 pub enum Statement {
     Expression(Expression),
     Declaration(Identifier, Option<Expression>),
-    Assignment(Identifier, Expression),
+    Assignment(Expression, AssignOp, Expression),
     IfElse(IfElse),
+    Return(Expression),
 }
 
 #[derive(Debug)]
@@ -43,17 +50,78 @@ pub struct IfElse {
 
 #[derive(Debug)]
 pub enum Expression {
+    Nil,
     Literal(Literal),
     Identifier(Identifier),
     MemberAccess(Box<Expression>, Identifier),
     FunctionCall(Box<Expression>, Vec<Expression>),
+    ObjectConstructor(Identifier, ObjectLiteral),
+    BinaryOp(Box<Expression>, BinOp, Box<Expression>),
+    Negate(Box<Expression>),
+    Not(Box<Expression>),
+}
+
+// listed from lowest to highest precedence
+#[derive(Debug)]
+pub enum BinOp {
+    RangeExclusive,
+    RangeInclusive,
+
+    LogicalOr,
+
+    LogicalAnd,
+
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessOrEqual,
+    GreaterOrEqual,
+
+    BitOr,
+    BitXor,
+    BitAnd,
+
+    LShiftLeft,
+    LShiftRight,
+    AShiftRight,
+
+    Add,
+    Sub,
+
+    Mul,
+    Div,
+    Rem,
+}
+
+#[derive(Debug)]
+pub enum AssignOp {
+    Assign,
+
+    BitOr,
+    BitXor,
+    BitAnd,
+
+    LShiftLeft,
+    LShiftRight,
+    AShiftRight,
+
+    Add,
+    Sub,
+
+    Mul,
+    Div,
+    Rem,
 }
 
 #[derive(Debug)]
 pub enum Literal {
     Integer(i64),
     Float(f64),
+    Bool(bool),
     String(String),
-    Object(BTreeMap<String, Expression>),
+    Object(ObjectLiteral),
     Array(Vec<Expression>),
 }
+
+pub type ObjectLiteral = BTreeMap<String, Expression>;
