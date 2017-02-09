@@ -53,11 +53,12 @@ Block: ast::Block = {
 };
 
 Statement: ast::Statement = {
-    "let" <Identifier> <("=" <Expression>)?> ";" => ast::Statement::Declaration(<>),
-    "return" <Expression> ";" => ast::Statement::Return(<>),
+    "let" <Identifier> <("," <Identifier>)*> <("=" <Expression>)?> ";" => ast::Statement::Declaration(<>),
+    "return" <Expression> <("," <Expression>)*> ";" => ast::Statement::Return(<>),
     "throw" <Expression> ";" => ast::Statement::Throw(<>),
+    "use" <Expression> ";" => ast::Statement::Use(<>),
     "if" <IfBlockChain> => ast::Statement::IfElse(<>),
-    <MemberAccess> <AssignOps> <Expression> ";" => ast::Statement::Assignment(<>),
+    <MemberAccess> <("," <MemberAccess>)*> <AssignOps> <Expression> ";" => ast::Statement::Assignment(<>),
     <FunctionCall> ";" => ast::Statement::Expression(<>),
 };
 
@@ -172,6 +173,9 @@ UnaryOperators: ast::Expression = {
 };
 
 MemberAccess: ast::Expression = {
+    <obj:MemberAccess> "[" <index:Expression> "]" => {
+        ast::Expression::IndexAccess(Box::new(obj), Box::new(index))
+    },
     <obj:MemberAccess> "." <member:Identifier> => {
         ast::Expression::MemberAccess(Box::new(obj), member)
     },
@@ -209,6 +213,7 @@ BlockItem: (ast::Identifier, ast::Expression) = {
 };
 
 Identifier: String = r"[a-zA-Z_][a-zA-Z0-9_]*" => (<>).into();
+//Identifier: String = r"[\p{XID_Start}_][\p{XID_Continue}_]*" => (<>).into();
 Label: String = ":" <Identifier>;
 
 Comma<T>: Vec<T> = {

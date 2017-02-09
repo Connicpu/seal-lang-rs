@@ -4,8 +4,13 @@ build = "build.rs"
 name = "seal-lang"
 version = "0.1.0"
 
-[dependencies]
-lalrpop-util = "0.12.4"
+[build-dependencies]
 
 [build-dependencies.lalrpop]
 version = "0.12.4"
+
+[dependencies]
+lalrpop-util = "0.12.4"
+serde = "0.9.6"
+serde_derive = "0.9.6"
+serde_json = "0.9.5"

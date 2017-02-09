@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 pub type Identifier = String;
 pub type Label = String;
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum Module {
     Root { items: Vec<Item> },
     Inline { name: Identifier, items: Vec<Item> },
     Extern { name: Identifier },
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum Item {
     Function(Function),
     Module(Module),
@@ -18,7 +18,7 @@ pub enum Item {
     TypeImpl(Identifier, Vec<Function>),
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Function {
     pub name: Identifier,
     pub parameters: Vec<Identifier>,
@@ -27,34 +27,36 @@ pub struct Function {
     pub body: Block,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Block {
     pub statements: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum Statement {
+    Use(Expression),
     Expression(Expression),
-    Declaration(Identifier, Option<Expression>),
-    Assignment(Expression, AssignOp, Expression),
+    Declaration(Identifier, Vec<Identifier>, Option<Expression>),
+    Assignment(Expression, Vec<Expression>, AssignOp, Expression),
     IfElse(IfElse),
-    Return(Expression),
+    Return(Expression, Vec<Expression>),
     Throw(Expression),
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct IfElse {
     pub condition: Box<Expression>,
     pub if_block: Box<Block>,
     pub else_block: Option<Box<Block>>,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum Expression {
     Nil,
     Literal(Literal),
     Identifier(Identifier),
     MemberAccess(Box<Expression>, Identifier),
+    IndexAccess(Box<Expression>, Box<Expression>),
     FunctionCall(Box<Expression>, Vec<Expression>),
     ObjectConstructor(Identifier, ObjectLiteral),
     BinaryOp(Box<Expression>, BinOp, Box<Expression>),
@@ -64,8 +66,10 @@ pub enum Expression {
 }
 
 // listed from lowest to highest precedence
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum BinOp {
+    Implements,
+
     RangeExclusive,
     RangeInclusive,
 
@@ -96,7 +100,7 @@ pub enum BinOp {
     Rem,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum AssignOp {
     Assign,
 
@@ -116,7 +120,7 @@ pub enum AssignOp {
     Rem,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum Literal {
     Integer(i64),
     Float(f64),

@@ -20,11 +20,15 @@ mod foo {
     }
 }
 
+fn bar() {
+    return 1, 2, 3;
+}
+
 fn main() {
     let result;
     
-    let me = foo.create("me").expect("I exist");
-    result = a.fly();
+    let me = foo.Person.create("me").expect("I exist");
+    result = me.fly();
     
     if result.err != nil {
         print("I'm sad");
@@ -35,5 +39,9 @@ fn main() {
     }
 
     let stuff = [1, 2, 3];
-    let things = -a.foo() + 6;
+    let things = -me.foo() + 6;
+    let _ = me[1 + 2 * 3];
+
+    let a, b, c = bar();
+    stuff[0], stuff[1], stuff[2] = bar();
 }
