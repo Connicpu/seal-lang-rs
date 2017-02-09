@@ -12,23 +12,42 @@ pub Module: ast::Module = {
 ModuleBlock = <Item*>;
 
 Item: ast::Item = {
-    "fn" <Function> => ast::Item::Function(<>),
+    "use" <Expression> ";" => ast::Item::Use(<>),
+    "extern" "mod" <Identifier> ";" => ast::Item::Extern(<>),
     "mod" <Identifier> => ast::Item::Module(ast::Module::Extern { name: <> }),
     "mod" <name:Identifier> "{" <items:ModuleBlock> "}" => ast::Item::Module(ast::Module::Inline {
         name: name,
         items: items,
     }),
     "type" <Identifier> ";" => ast::Item::TypeDecl(<>),
-    "impl" <name:Identifier> "{" <funcs:("fn" <Function>)*> "}" => {
-        let mut funcs = funcs;
-        for func in funcs.iter_mut() {
+    "impl" <inter:(<Identifier> "for")?> <name:Identifier> "{" <methods:("fn" <Function>)*> "}" => {
+        let mut methods = methods;
+        for func in methods.iter_mut() {
             if let Some("self") = func.parameters.first().map(|s| &s[..]) {
                 func.parameters.remove(0);
                 func.is_member = true;
             }
         }
-        ast::Item::TypeImpl(name, funcs)
-    }
+        ast::Item::TypeImpl(ast::TypeImpl {
+            name: name,
+            interface: inter,
+            methods: methods,
+        })
+    },
+    "trait" <name:Identifier> "{" <methods:("fn" <TraitFunction>)*> "}" => {
+        let mut methods = methods;
+        for func in methods.iter_mut() {
+            if let Some("self") = func.parameters.first().map(|s| &s[..]) {
+                func.parameters.remove(0);
+                func.is_member = true;
+            }
+        }
+        ast::Item::Trait(ast::Trait {
+            name: name,
+            methods: methods,
+        })
+    },
+    "fn" <Function> => ast::Item::Function(<>),
 };
 
 Params = Comma<Identifier>;
@@ -46,6 +65,15 @@ Function: ast::Function = {
     }
 };
 
+TraitFunction: ast::TraitFunction = {
+    <name:Identifier> "(" <params:Params> <err_flag:ErrFlag> ";" => ast::TraitFunction {
+        name: name.into(),
+        parameters: params,
+        can_error: err_flag,
+        is_member: false,
+    }
+};
+
 Block: ast::Block = {
     "{" <Statement*> "}" => ast::Block {
         statements: <>,
@@ -58,6 +86,18 @@ Statement: ast::Statement = {
     "throw" <Expression> ";" => ast::Statement::Throw(<>),
     "use" <Expression> ";" => ast::Statement::Use(<>),
     "if" <IfBlockChain> => ast::Statement::IfElse(<>),
+
+    "for" <Identifier> <("," <Identifier>)*> "in" <Expression> <Block> => {
+        let (id, mut bindings, iter, block) = (<>);
+        bindings.insert(0, id);
+        let for_loop = ast::ForLoop {
+            bindings: bindings,
+            iterator: iter,
+            block: block,
+        };
+        ast::Statement::ForLoop(for_loop)
+    },
+
     <MemberAccess> <("," <MemberAccess>)*> <AssignOps> <Expression> ";" => ast::Statement::Assignment(<>),
     <FunctionCall> ";" => ast::Statement::Expression(<>),
 };
@@ -102,13 +142,17 @@ Expression: ast::Expression = {
     <Expression> "?" => ast::Expression::Try(Box::new(<>)),
     FunctionCall,
 
-    RangeOperators,
+    BinaryOperators,
 };
 
 FunctionCall: ast::Expression = {
     <func:MemberAccess> "(" <params:Comma<Expression>> ")" => {
         ast::Expression::FunctionCall(Box::new(func), params)
     },
+};
+
+ImplOp: ast::BinOp = {
+    "impls" => ast::BinOp::Implements,
 };
 
 RangeOps: ast::BinOp = {
@@ -156,6 +200,8 @@ MulDivOps: ast::BinOp = {
     "%" => ast::BinOp::Rem,
 };
 
+BinaryOperators = ImplOperator;
+ImplOperator = Tier<ImplOp, RangeOperators>;
 RangeOperators = Tier<RangeOps, LogicalOperators>;
 LogicalOperators = Tier<LogicalOr, Tier<LogicalAnd, EqualityOperators>>;
 EqualityOperators = Tier<EqualOps, BitwiseOperators>;

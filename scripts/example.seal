@@ -1,3 +1,5 @@
+extern mod std;
+
 mod foo {
     type Person;
 
@@ -22,6 +24,25 @@ mod foo {
 
 fn bar() {
     return 1, 2, 3;
+}
+
+fn sum(iter) {
+    use std.Iterator;
+    use std.IntoIterator;
+
+    if iter impls IntoIterator {
+        sum = iter.into_iter();
+    }
+
+    if iter impls Iterator {
+        let sum = 0;
+        for x in iter {
+            sum += x;
+        }
+        return sum;
+    } else {
+        panic("sum can only be called on iterators");
+    }
 }
 
 fn main() {

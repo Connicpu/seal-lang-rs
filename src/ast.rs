@@ -12,10 +12,13 @@ pub enum Module {
 
 #[derive(Serialize, Deserialize)]
 pub enum Item {
-    Function(Function),
+    Use(Expression),
+    Extern(Identifier),
     Module(Module),
     TypeDecl(Identifier),
-    TypeImpl(Identifier, Vec<Function>),
+    TypeImpl(TypeImpl),
+    Function(Function),
+    Trait(Trait),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,6 +28,27 @@ pub struct Function {
     pub can_error: bool,
     pub is_member: bool,
     pub body: Block,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TypeImpl {
+    pub name: Identifier,
+    pub interface: Option<Identifier>,
+    pub methods: Vec<Function>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Trait {
+    pub name: Identifier,
+    pub methods: Vec<TraitFunction>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TraitFunction {
+    pub name: Identifier,
+    pub parameters: Vec<Identifier>,
+    pub can_error: bool,
+    pub is_member: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -39,6 +63,7 @@ pub enum Statement {
     Declaration(Identifier, Vec<Identifier>, Option<Expression>),
     Assignment(Expression, Vec<Expression>, AssignOp, Expression),
     IfElse(IfElse),
+    ForLoop(ForLoop),
     Return(Expression, Vec<Expression>),
     Throw(Expression),
 }
@@ -48,6 +73,13 @@ pub struct IfElse {
     pub condition: Box<Expression>,
     pub if_block: Box<Block>,
     pub else_block: Option<Box<Block>>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ForLoop {
+    pub bindings: Vec<Identifier>,
+    pub iterator: Expression,
+    pub block: Block,
 }
 
 #[derive(Serialize, Deserialize)]

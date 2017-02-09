@@ -1,0 +1,20 @@
+trait Iterator {
+    fn next(self);
+}
+
+impl Iterator {
+    fn nth(self, n) {
+        let i = 0;
+        for value in self {
+            if i == n {
+                return value;
+            }
+
+            i += 1;
+        }
+    }
+}
+
+trait IntoIterator {
+    fn into_iter(self);
+}
