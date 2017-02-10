@@ -169,21 +169,13 @@ IfBlockChain: ast::IfElse = {
 Expression: ast::Expression = {
     "new_object" <Identifier> <ObjectLiteral> => ast::Expression::ObjectConstructor(<>),
     <MemberAccess> "?" => ast::Expression::Try(Box::new(<>)),
-    <FunctionCall> "?" => ast::Expression::Try(Box::new(<>)),
 
     "fn" "(" <Params> ")" <"?"?> <Block> => ast::lambda(<>),
     
     "|" <Params> "|" <"?"?> <Expression> => ast::expr_lambda(<>),
     "||" <"?"?> <Expression> => ast::expr_lambda(vec![], <>),
 
-    FunctionCall,
     BinaryOperators,
-};
-
-FunctionCall: ast::Expression = {
-    <func:MemberAccess> "(" <params:Comma<Expression>> ")" => {
-        ast::Expression::FunctionCall(Box::new(func), params)
-    },
 };
 
 ImplOp: ast::BinOp = {
@@ -250,8 +242,8 @@ MulDivOperators = Tier<MulDivOps, UnaryOperators>;
 UnaryOperators: ast::Expression = {
     "-" <UnaryOperators> => ast::Expression::Negate(Box::new(<>)),
     "!" <UnaryOperators> => ast::Expression::Not(Box::new(<>)),
-    "-" <FunctionCall> => ast::Expression::Negate(Box::new(<>)),
-    "!" <FunctionCall> => ast::Expression::Not(Box::new(<>)),
+    //"-" <FunctionCall> => ast::Expression::Negate(Box::new(<>)),
+    //"!" <FunctionCall> => ast::Expression::Not(Box::new(<>)),
     MemberAccess,
 };
 
@@ -262,10 +254,14 @@ MemberAccess: ast::Expression = {
     <obj:MemberAccess> "." <member:Identifier> => {
         ast::Expression::MemberAccess(Box::new(obj), member)
     },
-    <obj:FunctionCall> "." <member:Identifier> => {
-        ast::Expression::MemberAccess(Box::new(obj), member)
+    FunctionCall,
+    Term,
+};
+
+FunctionCall: ast::Expression = {
+    <func:MemberAccess> "(" <params:Comma<Expression>> ")" => {
+        ast::Expression::FunctionCall(Box::new(func), params)
     },
-    Term
 };
 
 Term: ast::Expression = {

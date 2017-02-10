@@ -91,8 +91,16 @@ fn main() {
         print(x);
     }
 
-    button.on_click(fn(event) {
+    button.on_click(fn(self, event) {
         man.dance();
         kitty.sleep();
     });
+}
+
+fn 🤣(😎) {
+    if 😎 <= 1 {
+        return 1;
+    } else {
+        return (😎 * 🤣(😎 - 1));
+    }
 }

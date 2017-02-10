@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 pub type Identifier = String;
 pub type Label = String;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Module {
     Root { items: Vec<Item> },
     Inline { name: Identifier, items: Vec<Item> },
     Extern { name: Identifier },
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Item {
     Use(Expression),
     Extern(Identifier),
@@ -23,7 +23,7 @@ pub enum Item {
     ModuleDocComment(String),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Function {
     pub name: Identifier,
     pub parameters: Vec<Identifier>,
@@ -32,20 +32,20 @@ pub struct Function {
     pub body: Block,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TypeImpl {
     pub name: Identifier,
     pub interface: Option<Identifier>,
     pub methods: Vec<Function>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Trait {
     pub name: Identifier,
     pub methods: Vec<TraitFunction>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TraitFunction {
     pub name: Identifier,
     pub parameters: Vec<Identifier>,
@@ -53,12 +53,12 @@ pub struct TraitFunction {
     pub is_member: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Block {
     pub statements: Vec<Statement>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Statement {
     Use(Expression),
     Expression(Expression),
@@ -74,20 +74,20 @@ pub enum Statement {
     Continue(Option<Label>),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IfElse {
     pub condition: Box<Expression>,
     pub if_block: Box<Block>,
     pub else_block: Option<Box<Block>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Loop {
     pub label: Option<Label>,
     pub block: Block,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ForLoop {
     pub label: Option<Label>,
     pub bindings: Vec<Identifier>,
@@ -95,14 +95,14 @@ pub struct ForLoop {
     pub block: Block,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WhileLoop {
     pub label: Option<Label>,
     pub condition: Expression,
     pub block: Block,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Expression {
     Nil,
     Literal(Literal),
@@ -118,7 +118,7 @@ pub enum Expression {
     Lambda(Box<Lambda>),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Lambda {
     pub parameters: Vec<Identifier>,
     pub can_error: bool,
@@ -157,7 +157,7 @@ pub fn expr_lambda(mut params: Vec<Identifier>, err: Option<&str>, expr: Express
 }
 
 // listed from lowest to highest precedence
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum BinOp {
     Implements,
 
@@ -193,7 +193,7 @@ pub enum BinOp {
     Mod,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum AssignOp {
     Assign,
 
@@ -217,7 +217,7 @@ pub enum AssignOp {
     Mod,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Literal {
     Integer(i64),
     Float(f64),
