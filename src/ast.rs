@@ -19,6 +19,8 @@ pub enum Item {
     TypeImpl(TypeImpl),
     Function(Function),
     Trait(Trait),
+    DocComment(String),
+    ModuleDocComment(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -130,11 +132,16 @@ pub enum BinOp {
     Mul,
     Div,
     Rem,
+    DivRem,
+    Mod,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum AssignOp {
     Assign,
+
+    LogicalOr,
+    LogicalAnd,
 
     BitOr,
     BitXor,
@@ -150,6 +157,7 @@ pub enum AssignOp {
     Mul,
     Div,
     Rem,
+    Mod,
 }
 
 #[derive(Serialize, Deserialize)]

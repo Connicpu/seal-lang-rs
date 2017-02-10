@@ -1,11 +1,16 @@
-extern mod std;
+//! This is an example seal program!
+//! And you are reading a doc comment for the module ;)
+
+extern mod std; // loaded externally from some include path
 
 mod foo {
+    use std.rand;
+
     type Person;
 
     impl Person {
         fn create(name)? {
-            return new Person {
+            return new_object Person {
                 name,
                 has_flown: false,
                 can_fly: rand.bernoulli(0.5),

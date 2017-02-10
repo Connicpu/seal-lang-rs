@@ -1,7 +1,8 @@
 use ast;
+use lexer;
 use std::str::FromStr;
 
-grammar;
+grammar<'input>;
 
 pub Module: ast::Module = {
     <ModuleBlock> => ast::Module::Root {
@@ -12,6 +13,9 @@ pub Module: ast::Module = {
 ModuleBlock = <Item*>;
 
 Item: ast::Item = {
+    <MOD_DOC_COMMENT> => ast::Item::ModuleDocComment(<>.into()),
+    <DOC_COMMENT> => ast::Item::DocComment(<>.into()),
+
     "use" <Expression> ";" => ast::Item::Use(<>),
     "extern" "mod" <Identifier> ";" => ast::Item::Extern(<>),
     "mod" <Identifier> => ast::Item::Module(ast::Module::Extern { name: <> }),
@@ -51,25 +55,21 @@ Item: ast::Item = {
 };
 
 Params = Comma<Identifier>;
-ErrFlag: bool = {
-    ")?" => true,
-    ")" => false,
-};
 Function: ast::Function = {
-    <name:Identifier> "(" <params:Params> <err_flag:ErrFlag> <body:Block> => ast::Function {
+    <name:Identifier> "(" <params:Params> ")" <err_flag:("?")?> <body:Block> => ast::Function {
         name: name.into(),
         parameters: params,
-        can_error: err_flag,
+        can_error: err_flag.is_some(),
         is_member: false,
         body: body,
     }
 };
 
 TraitFunction: ast::TraitFunction = {
-    <name:Identifier> "(" <params:Params> <err_flag:ErrFlag> ";" => ast::TraitFunction {
+    <name:Identifier> "(" <params:Params> ")" <err_flag:("?")?> ";" => ast::TraitFunction {
         name: name.into(),
         parameters: params,
-        can_error: err_flag,
+        can_error: err_flag.is_some(),
         is_member: false,
     }
 };
@@ -104,6 +104,8 @@ Statement: ast::Statement = {
 
 AssignOps: ast::AssignOp = {
     "=" => ast::AssignOp::Assign,
+    "||=" => ast::AssignOp::LogicalOr,
+    "&&=" => ast::AssignOp::LogicalAnd,
     "|=" => ast::AssignOp::BitOr,
     "&=" => ast::AssignOp::BitAnd,
     "^=" => ast::AssignOp::BitXor,
@@ -115,6 +117,7 @@ AssignOps: ast::AssignOp = {
     "*=" => ast::AssignOp::Mul,
     "/=" => ast::AssignOp::Div,
     "%=" => ast::AssignOp::Rem,
+    "mod=" => ast::AssignOp::Mod,
 };
 
 IfBlockChain: ast::IfElse = {
@@ -128,7 +131,7 @@ IfBlockChain: ast::IfElse = {
         if_block: Box::new(if_block),
         else_block: Some(Box::new(else_block)),
     },
-    <cond:Expression> <if_block:Block> "else if" <chain:IfBlockChain> => ast::IfElse {
+    <cond:Expression> <if_block:Block> "else" "if" <chain:IfBlockChain> => ast::IfElse {
         condition: Box::new(cond),
         if_block: Box::new(if_block),
         else_block: Some(Box::new(ast::Block {
@@ -138,7 +141,7 @@ IfBlockChain: ast::IfElse = {
 };
 
 Expression: ast::Expression = {
-    "new" <Identifier> <ObjectLiteral> => ast::Expression::ObjectConstructor(<>),
+    "new_object" <Identifier> <ObjectLiteral> => ast::Expression::ObjectConstructor(<>),
     <Expression> "?" => ast::Expression::Try(Box::new(<>)),
     FunctionCall,
 
@@ -198,6 +201,8 @@ MulDivOps: ast::BinOp = {
     "*" => ast::BinOp::Mul,
     "/" => ast::BinOp::Div,
     "%" => ast::BinOp::Rem,
+    "/%" => ast::BinOp::DivRem,
+    "mod" => ast::BinOp::Mod,
 };
 
 BinaryOperators = ImplOperator;
@@ -239,10 +244,10 @@ Term: ast::Expression = {
 };
 
 Literal: ast::Literal = {
-    r"[0-9]+" => ast::Literal::Integer(i64::from_str(<>).unwrap()),
-    r"[0-9]+\.[0-9]+(e[+-]?[0-9]+)?" => ast::Literal::Float(f64::from_str(<>).unwrap()),
+    INT_LITERAL => ast::Literal::Integer(i64::from_str(<>).unwrap()),
+    FLOAT_LITERAL => ast::Literal::Float(f64::from_str(<>).unwrap()),
     // TODO: Parse string literal into actual string data
-    r#""(\\.|[^"])*""# => ast::Literal::String(<>.into()),
+    STR_LITERAL => ast::Literal::String(<>.into()),
     <ObjectLiteral> => ast::Literal::Object(<>),
     <ArrayLiteral> => ast::Literal::Array(<>),
 };
@@ -258,9 +263,8 @@ BlockItem: (ast::Identifier, ast::Expression) = {
     <Identifier> => (<>.clone(), ast::Expression::Identifier(<>.clone())),
 };
 
-Identifier: String = r"[a-zA-Z_][a-zA-Z0-9_]*" => (<>).into();
-//Identifier: String = r"[\p{XID_Start}_][\p{XID_Continue}_]*" => (<>).into();
-Label: String = ":" <Identifier>;
+Identifier: String = IDENTIFIER => <>.into();
+Label: String = LABEL => <>.into();
 
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e {
@@ -279,3 +283,99 @@ Tier<Op, NextTier>: ast::Expression = {
     },
     NextTier
 };
+
+extern {
+    type Location = lexer::Location;
+    type Error = lexer::LexicalError;
+
+    enum lexer::Tok<'input> {
+        "break" => (lexer::TokenType::Break, _),
+        "continue" => (lexer::TokenType::Continue, _),
+        "else" => (lexer::TokenType::Else, _),
+        "enum" => (lexer::TokenType::Enum, _),
+        "extern" => (lexer::TokenType::Extern, _),
+        "fn" => (lexer::TokenType::Function, _),
+        "for" => (lexer::TokenType::For, _),
+        "if" => (lexer::TokenType::If, _),
+        "impl" => (lexer::TokenType::Impl, _),
+        "impls" => (lexer::TokenType::Impls, _),
+        "in" => (lexer::TokenType::In, _),
+        "let" => (lexer::TokenType::Let, _),
+        "mod" => (lexer::TokenType::Mod, _),
+        "new_object" => (lexer::TokenType::NewObject, _),
+        "nil" => (lexer::TokenType::Nil, _),
+        "return" => (lexer::TokenType::Return, _),
+        "throw" => (lexer::TokenType::Throw, _),
+        "trait" => (lexer::TokenType::Trait, _),
+        "type" => (lexer::TokenType::Type, _),
+        "use" => (lexer::TokenType::Use, _),
+
+        "{" => (lexer::TokenType::OpenCurly, _),
+        "}" => (lexer::TokenType::CloseCurly, _),
+        "(" => (lexer::TokenType::OpenParen, _),
+        ")" => (lexer::TokenType::CloseParen, _),
+        "[" => (lexer::TokenType::OpenBracket, _),
+        "]" => (lexer::TokenType::CloseBracket, _),
+        ";" => (lexer::TokenType::Semicolon, _),
+        ":" => (lexer::TokenType::Colon, _),
+        "," => (lexer::TokenType::Comma, _),
+        "?" => (lexer::TokenType::Question, _),
+        "." => (lexer::TokenType::Dot, _),
+
+        ".." => (lexer::TokenType::RangeExclusive, _),
+        "..." => (lexer::TokenType::RangeInclusive, _),
+
+        "==" => (lexer::TokenType::Equal, _),
+        "!=" => (lexer::TokenType::NotEqual, _),
+        "<" => (lexer::TokenType::LessThan, _),
+        "<=" => (lexer::TokenType::LessOrEqual, _),
+        ">" => (lexer::TokenType::GreaterThan, _),
+        ">=" => (lexer::TokenType::GreaterOrEqual, _),
+
+        "!" => (lexer::TokenType::Not, _),
+
+        "&&" => (lexer::TokenType::LogicalAnd, _),
+        "||" => (lexer::TokenType::LogicalOr, _),
+        "&&=" => (lexer::TokenType::LogicalAndAssign, _),
+        "||=" => (lexer::TokenType::LogicalOrAssign, _),
+
+        "+" => (lexer::TokenType::Add, _),
+        "-" => (lexer::TokenType::Sub, _),
+        "*" => (lexer::TokenType::Mul, _),
+        "/" => (lexer::TokenType::Div, _),
+        "%" => (lexer::TokenType::Rem, _),
+        "/%" => (lexer::TokenType::DivRem, _),
+        "&" => (lexer::TokenType::BitAnd, _),
+        "|" => (lexer::TokenType::BitOr, _),
+        "^" => (lexer::TokenType::BitXor, _),
+        "<<" => (lexer::TokenType::Shl, _),
+        ">>" => (lexer::TokenType::Shr, _),
+        ">>>" => (lexer::TokenType::LShr, _),
+
+        "=" => (lexer::TokenType::Assign, _),
+        "+=" => (lexer::TokenType::AddAssign, _),
+        "-=" => (lexer::TokenType::SubAssign, _),
+        "*=" => (lexer::TokenType::MulAssign, _),
+        "/=" => (lexer::TokenType::DivAssign, _),
+        "%=" => (lexer::TokenType::RemAssign, _),
+        "&=" => (lexer::TokenType::BitAndAssign, _),
+        "|=" => (lexer::TokenType::BitOrAssign, _),
+        "^=" => (lexer::TokenType::BitXorAssign, _),
+        "<<=" => (lexer::TokenType::ShlAssign, _),
+        ">>=" => (lexer::TokenType::ShrAssign, _),
+        ">>>=" => (lexer::TokenType::LShrAssign, _),
+        "mod=" => (lexer::TokenType::ModAssign, _),
+
+        DOC_COMMENT => (lexer::TokenType::DocComment, <&'input str>),
+        MOD_DOC_COMMENT => (lexer::TokenType::ModuleDocComment, <&'input str>),
+        IDENTIFIER => (lexer::TokenType::Identifier, <&'input str>),
+        INT_LITERAL => (lexer::TokenType::IntLiteral, <&'input str>),
+        HEX_LITERAL => (lexer::TokenType::HexLiteral, <&'input str>),
+        OCT_LITERAL => (lexer::TokenType::OctLiteral, <&'input str>),
+        BIN_LITERAL => (lexer::TokenType::BinLiteral, <&'input str>),
+        FLOAT_LITERAL => (lexer::TokenType::FloatLiteral, <&'input str>),
+        STR_LITERAL => (lexer::TokenType::StringLiteral, <&'input str>),
+        CHAR_LITERAL => (lexer::TokenType::CharLiteral, <&'input str>),
+        LABEL => (lexer::TokenType::Label, <&'input str>),
+    }
+}

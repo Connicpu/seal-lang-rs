@@ -11,6 +11,8 @@ version = "0.12.4"
 
 [dependencies]
 lalrpop-util = "0.12.4"
+lazy_static = "0.2.2"
 serde = "0.9.6"
 serde_derive = "0.9.6"
 serde_json = "0.9.5"
+unicode-xid = "0.0.4"

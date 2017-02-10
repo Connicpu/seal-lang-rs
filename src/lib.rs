@@ -2,5 +2,11 @@
 extern crate serde_derive;
 extern crate serde;
 
-pub mod ast;
+#[macro_use]
+extern crate lazy_static;
+
+extern crate unicode_xid;
+
+pub mod lexer;
 pub mod parser;
+pub mod ast;
