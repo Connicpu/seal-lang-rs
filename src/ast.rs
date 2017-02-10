@@ -115,6 +115,46 @@ pub enum Expression {
     Negate(Box<Expression>),
     Not(Box<Expression>),
     Try(Box<Expression>),
+    Lambda(Box<Lambda>),
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Lambda {
+    pub parameters: Vec<Identifier>,
+    pub can_error: bool,
+    pub body: Block,
+}
+
+pub fn lambda(params: Vec<Identifier>, err: Option<&str>, block: Vec<Statement>) -> Expression {
+    Expression::Lambda(Box::new(Lambda {
+        parameters: params,
+        can_error: err.is_some(),
+        body: Block { statements: block },
+    }))
+}
+
+pub fn expr_lambda(params: Vec<Identifier>, err: Option<&str>, expr: Expression) -> Expression {
+    Expression::Lambda(Box::new(Lambda {
+        parameters: params,
+        can_error: err.is_some(),
+        body: Block { statements: vec![Statement::Return(expr, vec![])] },
+    }))
+}
+
+pub fn void_lambda(err: Option<&str>, block: Vec<Statement>) -> Expression {
+    Expression::Lambda(Box::new(Lambda {
+        parameters: vec![],
+        can_error: err.is_some(),
+        body: Block { statements: block },
+    }))
+}
+
+pub fn void_expr_lambda(err: Option<&str>, expr: Expression) -> Expression {
+    Expression::Lambda(Box::new(Lambda {
+        parameters: vec![],
+        can_error: err.is_some(),
+        body: Block { statements: vec![Statement::Return(expr, vec![])] },
+    }))
 }
 
 // listed from lowest to highest precedence
