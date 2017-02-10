@@ -167,6 +167,7 @@ pub enum TokenType {
     Impls,
     In,
     Let,
+    Loop,
     Mod, // `mod`
     NewObject, // `new_object`. I like using `new` as a function name
     Nil,
@@ -175,6 +176,7 @@ pub enum TokenType {
     Trait,
     Type,
     Use,
+    While,
 
     OpenCurly,
     CloseCurly,

@@ -65,9 +65,13 @@ pub enum Statement {
     Declaration(Identifier, Vec<Identifier>, Option<Expression>),
     Assignment(Expression, Vec<Expression>, AssignOp, Expression),
     IfElse(IfElse),
+    Loop(Loop),
     ForLoop(ForLoop),
+    WhileLoop(WhileLoop),
     Return(Expression, Vec<Expression>),
     Throw(Expression),
+    Break(Option<Label>),
+    Continue(Option<Label>),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -78,9 +82,23 @@ pub struct IfElse {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct Loop {
+    pub label: Option<Label>,
+    pub block: Block,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct ForLoop {
+    pub label: Option<Label>,
     pub bindings: Vec<Identifier>,
     pub iterator: Expression,
+    pub block: Block,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct WhileLoop {
+    pub label: Option<Label>,
+    pub condition: Expression,
     pub block: Block,
 }
 

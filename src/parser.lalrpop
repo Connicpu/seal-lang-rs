@@ -86,16 +86,38 @@ Statement: ast::Statement = {
     "throw" <Expression> ";" => ast::Statement::Throw(<>),
     "use" <Expression> ";" => ast::Statement::Use(<>),
     "if" <IfBlockChain> => ast::Statement::IfElse(<>),
+    "break" <Label?> ";" => ast::Statement::Break(<>),
+    "continue" <Label?> ";" => ast::Statement::Continue(<>),
 
-    "for" <Identifier> <("," <Identifier>)*> "in" <Expression> <Block> => {
-        let (id, mut bindings, iter, block) = (<>);
+    <(<Label> ":")?> "loop" <Block> => {
+        let (label, block) = (<>);
+        let iloop = ast::Loop {
+            label: label,
+            block: block,
+        };
+        ast::Statement::Loop(iloop)
+    },
+
+    <(<Label> ":")?> "for" <Identifier> <("," <Identifier>)*> "in" <Expression> <Block> => {
+        let (label, id, mut bindings, iter, block) = (<>);
         bindings.insert(0, id);
         let for_loop = ast::ForLoop {
+            label: label,
             bindings: bindings,
             iterator: iter,
             block: block,
         };
         ast::Statement::ForLoop(for_loop)
+    },
+
+    <(<Label> ":")?> "while" <Expression> <Block> => {
+        let (label, condition, block) = (<>);
+        let while_loop = ast::WhileLoop {
+            label: label,
+            condition: condition,
+            block: block,
+        };
+        ast::Statement::WhileLoop(while_loop)
     },
 
     <MemberAccess> <("," <MemberAccess>)*> <AssignOps> <Expression> ";" => ast::Statement::Assignment(<>),
@@ -264,7 +286,7 @@ BlockItem: (ast::Identifier, ast::Expression) = {
 };
 
 Identifier: String = IDENTIFIER => <>.into();
-Label: String = LABEL => <>.into();
+Label: String = LABEL => (<>[1..]).into();
 
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e {
@@ -301,6 +323,7 @@ extern {
         "impls" => (lexer::TokenType::Impls, _),
         "in" => (lexer::TokenType::In, _),
         "let" => (lexer::TokenType::Let, _),
+        "loop" => (lexer::TokenType::Loop, _),
         "mod" => (lexer::TokenType::Mod, _),
         "new_object" => (lexer::TokenType::NewObject, _),
         "nil" => (lexer::TokenType::Nil, _),
@@ -309,6 +332,7 @@ extern {
         "trait" => (lexer::TokenType::Trait, _),
         "type" => (lexer::TokenType::Type, _),
         "use" => (lexer::TokenType::Use, _),
+        "while" => (lexer::TokenType::While, _),
 
         "{" => (lexer::TokenType::OpenCurly, _),
         "}" => (lexer::TokenType::CloseCurly, _),
