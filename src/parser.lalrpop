@@ -25,13 +25,6 @@ Item: ast::Item = {
     }),
     "type" <Identifier> ";" => ast::Item::TypeDecl(<>),
     "impl" <inter:(<Identifier> "for")?> <name:Identifier> "{" <methods:("fn" <Function>)*> "}" => {
-        let mut methods = methods;
-        for func in methods.iter_mut() {
-            if let Some("self") = func.parameters.first().map(|s| &s[..]) {
-                func.parameters.remove(0);
-                func.is_member = true;
-            }
-        }
         ast::Item::TypeImpl(ast::TypeImpl {
             name: name,
             interface: inter,
@@ -39,13 +32,6 @@ Item: ast::Item = {
         })
     },
     "trait" <name:Identifier> "{" <methods:("fn" <TraitFunction>)*> "}" => {
-        let mut methods = methods;
-        for func in methods.iter_mut() {
-            if let Some("self") = func.parameters.first().map(|s| &s[..]) {
-                func.parameters.remove(0);
-                func.is_member = true;
-            }
-        }
         ast::Item::Trait(ast::Trait {
             name: name,
             methods: methods,
@@ -56,22 +42,40 @@ Item: ast::Item = {
 
 Params = Comma<Identifier>;
 Function: ast::Function = {
-    <name:Identifier> "(" <params:Params> ")" <err_flag:("?")?> <body:Block> => ast::Function {
-        name: name.into(),
-        parameters: params,
-        can_error: err_flag.is_some(),
-        is_member: false,
-        body: body,
-    }
+    <name:Identifier> "(" <params:Params> ")" <err_flag:("?")?> <body:Block> => {
+        let mut func = ast::Function {
+            name: name.into(),
+            parameters: params,
+            can_error: err_flag.is_some(),
+            is_member: false,
+            body: body,
+        };
+        
+        if let Some("self") = func.parameters.first().map(|s| &s[..]) {
+            func.parameters.remove(0);
+            func.is_member = true;
+        }
+
+        func
+    },
 };
 
 TraitFunction: ast::TraitFunction = {
-    <name:Identifier> "(" <params:Params> ")" <err_flag:("?")?> ";" => ast::TraitFunction {
-        name: name.into(),
-        parameters: params,
-        can_error: err_flag.is_some(),
-        is_member: false,
-    }
+    <name:Identifier> "(" <params:Params> ")" <err_flag:("?")?> ";" => {
+        let mut func = ast::TraitFunction {
+            name: name.into(),
+            parameters: params,
+            can_error: err_flag.is_some(),
+            is_member: false,
+        };
+        
+        if let Some("self") = func.parameters.first().map(|s| &s[..]) {
+            func.parameters.remove(0);
+            func.is_member = true;
+        }
+
+        func
+    },
 };
 
 Block: ast::Block = {
@@ -167,11 +171,10 @@ Expression: ast::Expression = {
     <MemberAccess> "?" => ast::Expression::Try(Box::new(<>)),
     <FunctionCall> "?" => ast::Expression::Try(Box::new(<>)),
 
-    "{" "|" <Params> "|" <"?"?> <Statement*> "}" => ast::lambda(<>),
-    "{" "||" <"?"?> <Statement*> "}" => ast::void_lambda(<>),
+    "fn" "(" <Params> ")" <"?"?> <Block> => ast::lambda(<>),
     
     "|" <Params> "|" <"?"?> <Expression> => ast::expr_lambda(<>),
-    "||" <"?"?> <Expression> => ast::void_expr_lambda(<>),
+    "||" <"?"?> <Expression> => ast::expr_lambda(vec![], <>),
 
     FunctionCall,
     BinaryOperators,

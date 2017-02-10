@@ -56,6 +56,11 @@ impl<'input> Lexer<'input> {
             self.loc.index = i;
             self.loc.column += 1;
 
+            if c == '\n' {
+                self.loc.line += 1;
+                self.loc.column = 1;
+            }
+
             if let Some(next) = dfa.next(node, &c) {
                 if let Some(&state) = dfa.state(next) {
                     let mut end = self.loc;
@@ -72,11 +77,6 @@ impl<'input> Lexer<'input> {
                 node = next;
             } else {
                 break;
-            }
-
-            if c == '\n' {
-                self.loc.line += 1;
-                self.loc.column = 1;
             }
         }
 

@@ -1,3 +1,5 @@
+type IterMap;
+
 trait Iterator {
     fn next(self);
 }
@@ -11,6 +13,22 @@ impl Iterator {
             }
 
             i += 1;
+        }
+    }
+
+    fn map(self, functor) {
+        return new_object IterMap {
+            inner: self,
+            functor,
+        };
+    }
+}
+
+impl Iterator for IterMap {
+    fn next(self) {
+        let next = self.inner.next();
+        if next != nil {
+            return self.functor(next);
         }
     }
 }

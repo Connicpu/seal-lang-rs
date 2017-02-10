@@ -86,4 +86,13 @@ fn main() {
             print(i);
         }
     }
+
+    for x in stuff.map(|x| x * x) {
+        print(x);
+    }
+
+    button.on_click(fn(event) {
+        man.dance();
+        kitty.sleep();
+    });
 }

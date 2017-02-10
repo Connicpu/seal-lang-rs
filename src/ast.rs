@@ -122,37 +122,36 @@ pub enum Expression {
 pub struct Lambda {
     pub parameters: Vec<Identifier>,
     pub can_error: bool,
+    pub is_member: bool,
     pub body: Block,
 }
 
-pub fn lambda(params: Vec<Identifier>, err: Option<&str>, block: Vec<Statement>) -> Expression {
+pub fn lambda(mut params: Vec<Identifier>, err: Option<&str>, block: Block) -> Expression {
+    let mut is_member = false;
+    if let Some("self") = params.first().map(|s| &s[..]) {
+        params.remove(0);
+        is_member = true;
+    }
+
     Expression::Lambda(Box::new(Lambda {
         parameters: params,
         can_error: err.is_some(),
-        body: Block { statements: block },
+        is_member: is_member,
+        body: block,
     }))
 }
 
-pub fn expr_lambda(params: Vec<Identifier>, err: Option<&str>, expr: Expression) -> Expression {
+pub fn expr_lambda(mut params: Vec<Identifier>, err: Option<&str>, expr: Expression) -> Expression {
+    let mut is_member = false;
+    if let Some("self") = params.first().map(|s| &s[..]) {
+        params.remove(0);
+        is_member = true;
+    }
+
     Expression::Lambda(Box::new(Lambda {
         parameters: params,
         can_error: err.is_some(),
-        body: Block { statements: vec![Statement::Return(expr, vec![])] },
-    }))
-}
-
-pub fn void_lambda(err: Option<&str>, block: Vec<Statement>) -> Expression {
-    Expression::Lambda(Box::new(Lambda {
-        parameters: vec![],
-        can_error: err.is_some(),
-        body: Block { statements: block },
-    }))
-}
-
-pub fn void_expr_lambda(err: Option<&str>, expr: Expression) -> Expression {
-    Expression::Lambda(Box::new(Lambda {
-        parameters: vec![],
-        can_error: err.is_some(),
+        is_member: is_member,
         body: Block { statements: vec![Statement::Return(expr, vec![])] },
     }))
 }
