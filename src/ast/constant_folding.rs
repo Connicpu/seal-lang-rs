@@ -1,21 +1,132 @@
+use ast;
+use ast::ArrayLiteral;
 use ast::BinOp;
 use ast::Expression;
 use ast::Literal;
 use num::Integer;
 
+pub fn fold_module(root: &mut ast::Module) {
+    match *root {
+        ast::Module::Root { ref mut items } => {
+            for item in items.iter_mut() {
+                fold_item(item);
+            }
+        }
+        ast::Module::Inline { ref mut items, .. } => {
+            for item in items.iter_mut() {
+                fold_item(item);
+            }
+        }
+        _ => (),
+    }
+}
+
+fn fold_item(item: &mut ast::Item) {
+    match *item {
+        ast::Item::Module(ref mut module) => fold_module(module),
+        ast::Item::TypeImpl(_, ref mut imp) => fold_impl(imp),
+        ast::Item::Function(_, ref mut func) => fold_func(func),
+        _ => (),
+    }
+}
+
+fn fold_impl(imp: &mut ast::TypeImpl) {
+    for func in imp.methods.iter_mut() {
+        fold_func(func);
+    }
+}
+
+fn fold_func(func: &mut ast::Function) {
+    fold_block(&mut func.body);
+}
+
+fn fold_block(block: &mut ast::Block) {
+    for stmnt in block.statements.iter_mut() {
+        fold_statement(stmnt);
+    }
+}
+
+fn fold_statement(stmnt: &mut ast::Statement) {
+    use ast::Statement::*;
+    match *stmnt {
+        Expression(ref mut expr) => fold(expr),
+        Declaration(_, _, Some(ref mut expr)) => fold(expr),
+        Assignment(ref mut lhs, ref mut extra, _, ref mut rhs) => {
+            fold(lhs);
+            fold_all(extra);
+            fold(rhs);
+        }
+        IfElse(ast::IfElse { ref mut if_block, ref mut else_block, .. }) => {
+            fold_block(if_block);
+            if let Some(ref mut else_block) = *else_block {
+                fold_block(else_block);
+            }
+        }
+        Loop(ast::Loop { ref mut block, .. }) => fold_block(block),
+        ForLoop(ast::ForLoop { ref mut iterator, ref mut block, .. }) => {
+            fold(iterator);
+            fold_block(block);
+        }
+        WhileLoop(ast::WhileLoop { ref mut condition, ref mut block, .. }) => {
+            fold(condition);
+            fold_block(block);
+        }
+        Return(ref mut exprs) => fold_all(exprs),
+        Throw(ref mut expr) => fold(expr),
+
+        _ => (),
+    }
+}
+
+fn fold_all(exprs: &mut [Expression]) {
+    for expr in exprs.iter_mut() {
+        fold(expr);
+    }
+}
+
 pub fn fold(expr: &mut Expression) {
     let new_value = match *expr {
+        Expression::Literal(ref mut lit) => {
+            fold_literal(lit);
+            None
+        }
+        Expression::MemberAccess(ref mut lhs, _) => {
+            fold(lhs);
+            None
+        }
+        Expression::IndexAccess(ref mut lhs, ref mut exprs) => {
+            fold(lhs);
+            fold_all(exprs);
+            None
+        }
+        Expression::FunctionCall(ref mut lhs, ref mut exprs) => {
+            fold(lhs);
+            fold_all(exprs);
+            None
+        }
+        Expression::ObjectConstructor(_, ref mut lit) => {
+            fold_obj_literal(lit);
+            None
+        }
         Expression::BinaryOp(ref mut lhs, op, ref mut rhs) => {
             fold(lhs);
             fold(rhs);
             simplify_binary(lhs, op, rhs)
         }
+        Expression::Negate(ref mut rhs) => {
+            fold(rhs);
+            apply_negate(rhs)
+        }
         Expression::Not(ref mut rhs) => {
             fold(rhs);
             apply_not(rhs)
         }
-        Expression::Literal(ref mut lit) => {
-            fold_literal(lit);
+        Expression::Try(ref mut lhs) => {
+            fold(lhs);
+            None
+        }
+        Expression::Lambda(ref mut lambda) => {
+            fold_block(&mut lambda.body);
             None
         }
         _ => None,
@@ -28,26 +139,44 @@ pub fn fold(expr: &mut Expression) {
 
 fn fold_literal(lit: &mut Literal) {
     match *lit {
-        Literal::Array(ref mut arr) => {
-            for expr in arr.iter_mut() {
-                fold(expr);
-            }
-        }
-        Literal::Object(ref mut obj) => {
-            for (_, expr) in obj.iter_mut() {
-                fold(expr);
-            }
-        }
-        Literal::Simd(ref mut arr, _) => {
-            for expr in arr.iter_mut() {
-                fold(expr);
-            }
-        }
-        Literal::SimdSplat(ref mut expr, _) => {
-            fold(&mut **expr);
-        }
-        _ => ()
+        Literal::Array(ref mut arr) => fold_arr_literal(arr),
+        Literal::Object(ref mut obj) => fold_obj_literal(obj),
+        Literal::Simd(ref mut arr, _) => fold_all(arr),
+        Literal::SimdSplat(ref mut expr, _) => fold(&mut **expr),
+        _ => (),
     }
+}
+
+fn fold_arr_literal(arr: &mut ArrayLiteral) {
+    match *arr {
+        ArrayLiteral::List(ref mut exprs) => fold_all(exprs),
+        ArrayLiteral::Splat(ref mut val, ref mut count) => {
+            fold(val);
+            fold(count);
+        }
+    }
+}
+
+fn fold_obj_literal(obj: &mut ast::ObjectLiteral) {
+    for (_, expr) in obj.iter_mut() {
+        fold(expr);
+    }
+}
+
+fn apply_negate(rhs: &Expression) -> Option<Expression> {
+    use ast::Literal::*;
+
+    let lit = match *rhs {
+        Expression::Literal(ref lit) => lit,
+        _ => return None,
+    };
+
+    Some(Expression::Literal(match *lit {
+        Integer(i) => Integer(-i),
+        Float(f) => Float(-f),
+
+        _ => return None,
+    }))
 }
 
 fn apply_not(rhs: &Expression) -> Option<Expression> {
@@ -209,9 +338,9 @@ fn simplify_arithmetic(lhs: &Literal, op: BinOp, rhs: &Literal) -> Option<Expres
 
         // Mod
         (&Integer(l), Mod, &Integer(r)) => Integer(l.mod_floor(&r)),
-        (&Integer(l), Mod, &Float(r)) => Float(frem((l as f64), r)),
-        (&Float(l), Mod, &Integer(r)) => Float(frem(l, (r as f64))),
-        (&Float(l), Mod, &Float(r)) => Float(frem(l, r)),
+        (&Integer(l), Mod, &Float(r)) => Float(fmod((l as f64), r)),
+        (&Float(l), Mod, &Integer(r)) => Float(fmod(l, (r as f64))),
+        (&Float(l), Mod, &Float(r)) => Float(fmod(l, r)),
 
         _ => return None,
     }))

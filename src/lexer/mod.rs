@@ -49,7 +49,7 @@ impl<'input> Lexer<'input> {
 
         loop {
             let (i, c) = match self.chars.next() {
-                None => return None,
+                None => break,
                 Some(i) => i,
             };
 
@@ -156,6 +156,7 @@ pub enum TokenType {
     Label,
 
     Break,
+    Const,
     Continue,
     Else,
     Enum,

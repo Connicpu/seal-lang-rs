@@ -21,6 +21,7 @@ pub enum Item {
     TypeImpl(Vec<Attribute>, TypeImpl),
     Function(Vec<Attribute>, Function),
     Trait(Vec<Attribute>, Trait),
+    Const(Vec<Attribute>, Identifier, Expression),
     DocComment(String),
     ModuleDocComment(String),
 }
@@ -78,7 +79,7 @@ pub enum Statement {
     Loop(Loop),
     ForLoop(ForLoop),
     WhileLoop(WhileLoop),
-    Return(Expression, Vec<Expression>),
+    Return(Vec<Expression>),
     Throw(Expression),
     Break(Option<Label>),
     Continue(Option<Label>),
@@ -118,7 +119,7 @@ pub enum Expression {
     Literal(Literal),
     Identifier(Identifier),
     MemberAccess(Box<Expression>, Identifier),
-    IndexAccess(Box<Expression>, Box<Expression>),
+    IndexAccess(Box<Expression>, Vec<Expression>),
     FunctionCall(Box<Expression>, Vec<Expression>),
     ObjectConstructor(Identifier, ObjectLiteral),
     BinaryOp(Box<Expression>, BinOp, Box<Expression>),
@@ -162,7 +163,7 @@ pub fn expr_lambda(mut params: Vec<Identifier>, err: Option<&str>, expr: Express
         parameters: params,
         can_error: err.is_some(),
         is_member: is_member,
-        body: Block { statements: vec![Statement::Return(expr, vec![])] },
+        body: Block { statements: vec![Statement::Return(vec![expr])] },
     }))
 }
 
@@ -234,9 +235,15 @@ pub enum Literal {
     Bool(bool),
     String(String),
     Object(ObjectLiteral),
-    Array(Vec<Expression>),
+    Array(ArrayLiteral),
     Simd(Vec<Expression>, Option<Identifier>),
     SimdSplat(Box<Expression>, Option<Identifier>),
 }
 
 pub type ObjectLiteral = BTreeMap<String, Expression>;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ArrayLiteral {
+    List(Vec<Expression>),
+    Splat(Box<Expression>, Box<Expression>),
+}

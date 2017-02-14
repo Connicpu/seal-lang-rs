@@ -104,6 +104,7 @@ pub fn create_dfa() -> Dfa<TT, char> {
     let hex_separator = dfa.create(None);
 
     dfa.transition_complex(hex_start, hex_literal, |c| c.is_digit(16));
+    dfa.transition_complex(hex_literal, hex_literal, |c| c.is_digit(16));
     dfa.transition_complex(hex_separator, hex_literal, |c| c.is_digit(16));
     dfa.transition(hex_literal, hex_separator, '_');
 
@@ -111,6 +112,7 @@ pub fn create_dfa() -> Dfa<TT, char> {
     let oct_separator = dfa.create(None);
 
     dfa.transition_complex(oct_start, oct_literal, |c| c.is_digit(8));
+    dfa.transition_complex(oct_literal, oct_literal, |c| c.is_digit(8));
     dfa.transition_complex(oct_separator, oct_literal, |c| c.is_digit(8));
     dfa.transition(oct_literal, oct_separator, '_');
 
@@ -118,6 +120,7 @@ pub fn create_dfa() -> Dfa<TT, char> {
     let bin_separator = dfa.create(None);
 
     dfa.transition_complex(bin_start, bin_literal, |c| c.is_digit(2));
+    dfa.transition_complex(bin_literal, bin_literal, |c| c.is_digit(2));
     dfa.transition_complex(bin_separator, bin_literal, |c| c.is_digit(2));
     dfa.transition(bin_literal, bin_separator, '_');
 

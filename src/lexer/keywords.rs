@@ -5,6 +5,7 @@ pub fn match_keyword(ident: &str) -> Option<TT> {
 }
 
 static KEYWORDS: &'static [(TT, &'static str)] = &[(TT::Break, "break"),
+                                                   (TT::Const, "const"),
                                                    (TT::Continue, "continue"),
                                                    (TT::Else, "else"),
                                                    (TT::Enum, "enum"),

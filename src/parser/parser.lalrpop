@@ -41,6 +41,7 @@ Item: ast::Item = {
         })
     },
     <Attributes> "fn" <Function> => ast::Item::Function(<>),
+    <Attributes> "const" <Identifier> "=" <Expression> ";" => ast::Item::Const(<>),
 };
 
 Attributes: Vec<ast::Attribute> = ("@" <Attribute>)*;
@@ -97,7 +98,7 @@ Block: ast::Block = {
 
 Statement: ast::Statement = {
     "let" <Identifier> <("," <Identifier>)*> <("=" <Expression>)?> ";" => ast::Statement::Declaration(<>),
-    "return" <Expression> <("," <Expression>)*> ";" => ast::Statement::Return(<>),
+    "return" <Comma<Expression>> ";" => ast::Statement::Return(<>),
     "throw" <Expression> ";" => ast::Statement::Throw(<>),
     "use" <Expression> ";" => ast::Statement::Use(<>),
     "if" <IfBlockChain> => ast::Statement::IfElse(<>),
@@ -253,14 +254,12 @@ MulDivOperators = Tier<MulDivOps, UnaryOperators>;
 UnaryOperators: ast::Expression = {
     "-" <UnaryOperators> => ast::Expression::Negate(Box::new(<>)),
     "!" <UnaryOperators> => ast::Expression::Not(Box::new(<>)),
-    //"-" <FunctionCall> => ast::Expression::Negate(Box::new(<>)),
-    //"!" <FunctionCall> => ast::Expression::Not(Box::new(<>)),
     MemberAccess,
 };
 
 MemberAccess: ast::Expression = {
-    <obj:MemberAccess> "[" <index:Expression> "]" => {
-        ast::Expression::IndexAccess(Box::new(obj), Box::new(index))
+    <obj:MemberAccess> "[" <index:Comma<Expression>> "]" => {
+        ast::Expression::IndexAccess(Box::new(obj), index)
     },
     <obj:MemberAccess> "." <member:Identifier> => {
         ast::Expression::MemberAccess(Box::new(obj), member)
@@ -297,10 +296,10 @@ Literal: ast::Literal = {
 };
 
 IntegerLiteral: i64 = {
-    INT_LITERAL => i64::from_str_radix(<>, 10).unwrap(),
-    HEX_LITERAL => i64::from_str_radix(<>, 16).unwrap(),
-    OCT_LITERAL => i64::from_str_radix(<>, 8).unwrap(),
-    BIN_LITERAL => i64::from_str_radix(<>, 2).unwrap(),
+    INT_LITERAL => i64::from_str_radix(&<>[0..], 10).unwrap(),
+    HEX_LITERAL => i64::from_str_radix(&<>[2..], 16).unwrap(),
+    OCT_LITERAL => i64::from_str_radix(&<>[2..], 8).unwrap(),
+    BIN_LITERAL => i64::from_str_radix(&<>[2..], 2).unwrap(),
 };
 
 FLoatLiteral: f64 = {
@@ -316,7 +315,13 @@ ObjectLiteral: ast::ObjectLiteral = {
     "{" <Comma<BlockItem>> "}" => (<>).into_iter().collect()
 };
 
-ArrayLiteral = "[" <Comma<Expression>> "]";
+ArrayLiteral: ast::ArrayLiteral = {
+    "[" <Comma<Expression>> "]" => ast::ArrayLiteral::List(<>),
+    "[" <Expression> ";" <Expression> "]" => {
+        let (val, count) = (<>);
+        ast::ArrayLiteral::Splat(Box::new(val), Box::new(count))
+    }
+};
 
 BlockItem: (ast::Identifier, ast::Expression) = {
     <Identifier> ":" <Expression> => (<>),
@@ -350,6 +355,7 @@ extern {
 
     enum lexer::Tok<'input> {
         "break" => (lexer::TokenType::Break, <&'input str>),
+        "const" => (lexer::TokenType::Const, <&'input str>),
         "continue" => (lexer::TokenType::Continue, <&'input str>),
         "else" => (lexer::TokenType::Else, <&'input str>),
         "enum" => (lexer::TokenType::Enum, <&'input str>),
