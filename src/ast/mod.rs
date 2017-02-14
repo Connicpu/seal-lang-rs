@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+pub mod constant_folding;
+
 pub type Identifier = String;
 pub type Label = String;
 
@@ -15,12 +17,20 @@ pub enum Item {
     Use(Expression),
     Extern(Identifier),
     Module(Module),
-    TypeDecl(Identifier),
-    TypeImpl(TypeImpl),
-    Function(Function),
-    Trait(Trait),
+    TypeDecl(Vec<Attribute>, Identifier),
+    TypeImpl(Vec<Attribute>, TypeImpl),
+    Function(Vec<Attribute>, Function),
+    Trait(Vec<Attribute>, Trait),
     DocComment(String),
     ModuleDocComment(String),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Attribute {
+    Identifier(Identifier),
+    Named(Identifier, Vec<Attribute>),
+    String(String),
+    Map(Box<Attribute>, Box<Attribute>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -157,7 +167,7 @@ pub fn expr_lambda(mut params: Vec<Identifier>, err: Option<&str>, expr: Express
 }
 
 // listed from lowest to highest precedence
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum BinOp {
     Implements,
 
@@ -193,7 +203,7 @@ pub enum BinOp {
     Mod,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum AssignOp {
     Assign,
 
@@ -225,6 +235,8 @@ pub enum Literal {
     String(String),
     Object(ObjectLiteral),
     Array(Vec<Expression>),
+    Simd(Vec<Expression>, Option<Identifier>),
+    SimdSplat(Box<Expression>, Option<Identifier>),
 }
 
 pub type ObjectLiteral = BTreeMap<String, Expression>;

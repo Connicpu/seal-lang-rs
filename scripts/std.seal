@@ -1,5 +1,6 @@
 type IterMap;
 
+@lang("iterator")
 trait Iterator {
     fn next(self);
 }
@@ -33,6 +34,13 @@ impl Iterator for IterMap {
     }
 }
 
+@lang("into_iterator")
 trait IntoIterator {
     fn into_iter(self);
+}
+
+impl IntoIterator for Iterator {
+    fn into_iter(self) {
+        return self;
+    }
 }

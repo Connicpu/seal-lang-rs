@@ -1,6 +1,7 @@
 use ast;
 use lexer;
 use std::str::FromStr;
+use num::Num;
 
 grammar<'input>;
 
@@ -23,21 +24,31 @@ Item: ast::Item = {
         name: name,
         items: items,
     }),
-    "type" <Identifier> ";" => ast::Item::TypeDecl(<>),
-    "impl" <inter:(<Identifier> "for")?> <name:Identifier> "{" <methods:("fn" <Function>)*> "}" => {
-        ast::Item::TypeImpl(ast::TypeImpl {
+    <Attributes> "type" <Identifier> ";" => ast::Item::TypeDecl(<>),
+    <Attributes> "impl" <(<Identifier> "for")?> <Identifier> "{" <("fn" <Function>)*> "}" => {
+        let (attrs, inter, name, methods) = (<>);
+        ast::Item::TypeImpl(attrs, ast::TypeImpl {
             name: name,
             interface: inter,
             methods: methods,
         })
     },
-    "trait" <name:Identifier> "{" <methods:("fn" <TraitFunction>)*> "}" => {
-        ast::Item::Trait(ast::Trait {
+    <Attributes> "trait" <Identifier> "{" <("fn" <TraitFunction>)*> "}" => {
+        let (attrs, name, methods) = (<>);
+        ast::Item::Trait(attrs, ast::Trait {
             name: name,
             methods: methods,
         })
     },
-    "fn" <Function> => ast::Item::Function(<>),
+    <Attributes> "fn" <Function> => ast::Item::Function(<>),
+};
+
+Attributes: Vec<ast::Attribute> = ("@" <Attribute>)*;
+
+Attribute: ast::Attribute = {
+    <Identifier> => ast::Attribute::Identifier(<>),
+    <Identifier> "(" <Comma<Attribute>> ")" => ast::Attribute::Named(<>),
+    <StringLiteral> => ast::Attribute::String(<>),
 };
 
 Params = Comma<Identifier>;
@@ -272,12 +283,33 @@ Term: ast::Expression = {
 };
 
 Literal: ast::Literal = {
-    INT_LITERAL => ast::Literal::Integer(i64::from_str(<>).unwrap()),
-    FLOAT_LITERAL => ast::Literal::Float(f64::from_str(<>).unwrap()),
-    // TODO: Parse string literal into actual string data
-    STR_LITERAL => ast::Literal::String(<>.into()),
+    <IntegerLiteral> => ast::Literal::Integer(<>),
+    <FLoatLiteral> => ast::Literal::Float(<>),
+    <StringLiteral> => ast::Literal::String(<>),
     <ObjectLiteral> => ast::Literal::Object(<>),
     <ArrayLiteral> => ast::Literal::Array(<>),
+
+    "<" <Comma<UnaryOperators>> <(":" <Identifier>)?> ">" => ast::Literal::Simd(<>),
+    "<" <UnaryOperators> "..." <(":" <Identifier>)?> ">" => {
+        let (expr, id) = (<>);
+        ast::Literal::SimdSplat(Box::new(expr), id)
+    },
+};
+
+IntegerLiteral: i64 = {
+    INT_LITERAL => i64::from_str_radix(<>, 10).unwrap(),
+    HEX_LITERAL => i64::from_str_radix(<>, 16).unwrap(),
+    OCT_LITERAL => i64::from_str_radix(<>, 8).unwrap(),
+    BIN_LITERAL => i64::from_str_radix(<>, 2).unwrap(),
+};
+
+FLoatLiteral: f64 = {
+    FLOAT_LITERAL => f64::from_str(<>).unwrap(),
+};
+
+// TODO: Parse string literal into actual string data
+StringLiteral: String = {
+    STR_LITERAL => (<>).into()
 };
 
 ObjectLiteral: ast::ObjectLiteral = {
@@ -363,6 +395,8 @@ extern {
         ">=" => (lexer::TokenType::GreaterOrEqual, <&'input str>),
 
         "!" => (lexer::TokenType::Not, <&'input str>),
+        "~" => (lexer::TokenType::Tilde, <&'input str>),
+        "@" => (lexer::TokenType::At, <&'input str>),
 
         "&&" => (lexer::TokenType::LogicalAnd, <&'input str>),
         "||" => (lexer::TokenType::LogicalOr, <&'input str>),

@@ -207,6 +207,8 @@ pub fn create_dfa() -> Dfa<TT, char> {
     dfa.insert_string(root, ">=".chars(), TT::GreaterOrEqual);
 
     dfa.insert_string(root, "!".chars(), TT::Not);
+    dfa.insert_string(root, "~".chars(), TT::Tilde);
+    dfa.insert_string(root, "@".chars(), TT::At);
 
     dfa.insert_string(root, "&&".chars(), TT::LogicalAnd);
     dfa.insert_string(root, "||".chars(), TT::LogicalOr);

@@ -201,6 +201,8 @@ pub enum TokenType {
     GreaterOrEqual,
 
     Not,
+    Tilde,
+    At,
 
     LogicalAnd,
     LogicalOr,
