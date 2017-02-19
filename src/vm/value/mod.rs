@@ -1,10 +1,11 @@
 use ast;
 use std::collections::HashMap;
 use std::rc::Rc;
-use vm::value::object::Object;
+use vm::runtime as rt;
+pub use vm::value::object::Object;
 use vm::value::shared::{Shared, SharedRef};
 use vm::value::simd::SimdValue;
-use vm::value::sym::Symbol;
+pub use vm::value::sym::Symbol;
 
 pub mod sym;
 pub mod object;
@@ -29,8 +30,10 @@ pub enum Value {
     Object(Shared<Object>),
     Table(Shared<HashMap<ValueKey, Value>>),
     Array(Shared<Vec<Value>>),
-    Simd(SimdValue),
-    PlainFunction(Rc<ast::Function>), 
+    Simd(Box<SimdValue>),
+    PlainFunction(Rc<ast::Function>),
+    ExternFunction(Shared<rt::Function>), 
+
     // TODO: Closures
 }
 

@@ -293,7 +293,7 @@ fn simplify_shift(lhs: &Literal, op: BinOp, rhs: &Literal) -> Option<Expression>
     use ast::Literal::*;
 
     Some(Expression::Literal(match (lhs, op, rhs) {
-        (&Integer(l), LShiftLeft, &Integer(r)) => Integer(l << r),
+        (&Integer(l), LShiftLeft, &Integer(r)) => Integer(((l as u64) << r) as i64),
         (&Integer(l), AShiftRight, &Integer(r)) => Integer(l >> r),
         (&Integer(l), LShiftRight, &Integer(r)) => Integer(((l as u64) >> r) as i64),
 

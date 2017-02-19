@@ -9,7 +9,7 @@ mod foo {
     type Person;
 
     impl Person {
-        fn create(name)? {
+        fn new(name)? {
             return new_object Person {
                 name,
                 has_flown: false,

@@ -1,20 +1,38 @@
 use ast;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::rc::Rc;
 use vm::value::Value;
 use vm::value::sym::Symbol;
 
 #[derive(Clone, Debug)]
 pub struct Object {
-    metatype: Option<Rc<MetaType>>,
-    fields: ObjectFields,
+    pub metatype: Option<Rc<MetaType>>,
+    pub fields: ObjectFields,
 }
 
 #[derive(Clone, Debug)]
 pub struct MetaType {
-    name: Symbol,
-    static_methods: Vec<Rc<ast::Function>>,
-    member_methods: Vec<Rc<ast::Function>>,
+    pub name: Symbol,
+    pub inherent_type: TypeImpl,
+    pub trait_impls: HashMap<Symbol, TypeImpl>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TraitDef {
+    pub name: Symbol,
+    pub constants: HashSet<Symbol>,
+    pub static_methods: HashMap<Symbol, Rc<ast::TraitFunction>>,
+    pub member_methods: HashMap<Symbol, Rc<ast::TraitFunction>>,
+    pub default_impl: Option<TypeImpl>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TypeImpl {
+    pub name: Symbol,
+    pub interface: Option<Symbol>,
+    pub constants: HashMap<Symbol, Value>,
+    pub static_methods: HashMap<Symbol, Rc<ast::Function>>,
+    pub member_methods: HashMap<Symbol, Rc<ast::Function>>,
 }
 
 #[derive(Clone, Debug)]
